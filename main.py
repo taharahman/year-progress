@@ -1,27 +1,31 @@
 import os
 import sys
 import math
+import time
 import tweepy
-import pendulum
+
+from datetime import datetime
 
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
 ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
 ACCESS_TOKEN_SECRET = os.getenv('ACCESS_TOKEN_SECRET')
 
-# Calculate the current year progress
-dt = pendulum.now("UTC")
-year_days = 366 if dt.is_leap_year() else 365
-passed_days = dt.timetuple().tm_yday
-progress = math.floor((passed_days / year_days) * 100)
+os.environ["TZ"] = "UTC"
+time.tzset()
 
-# Directory of the 'progress.txt' file
+# Calculate the current year progress
+now = datetime.now()
+start = datetime(now.year, 1, 1)
+end = datetime(now.year, 12, 31, 23, 59)
+progress = math.floor(((now - start) / (end - start)) * 100)
+
+# Directory of 'progress.txt' file
 directory = os.path.join(sys.path[0], "progress.txt")
 
-# Read the year progress that was last recoFrded
-f = open(directory, "r")
-output = f.readline()
-f.close()
+# Read the last recorded year progress
+with open(directory, "r") as f:
+    output = f.readline()
 
 if progress != int(output):
     # Initialize & authenticate Tweepy
@@ -41,14 +45,13 @@ if progress != int(output):
     # Push tweet
     api.update_status(status)
 
-    # Store current year progress in the progress.txt file
-    f = open(directory, "w")
-    f.write("{}".format(progress))
-    f.close()
+    # Store current progress in progress.txt
+    with open(directory, "w") as f:
+        f.write("{}".format(progress))
 
     # Update profile when new year starts
     if progress == 100:
-        year = str(dt.year)
+        year = str(now.year + 1)
         api.update_profile(
             name="Year Progress (" + year + ")",
             description="Progress bar of " + year + ".")
